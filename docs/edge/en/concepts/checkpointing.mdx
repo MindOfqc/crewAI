@@ -55,11 +55,11 @@ Auto-checkpoint writes (event-driven) are best-effort: a failed write is logged 
 
 A restore builds the crew, flow, or agent from the checkpoint file, not from the object you call `kickoff()` on. `crew.kickoff(from_checkpoint=...)` runs the crew stored in the file, so callables you set on `crew` are not copied over.
 
-A checkpoint saves a callback as the dotted path of a module-level function, such as `"my_project.hooks.on_task_done"`, and imports it again on restore. A checkpoint is data, so CrewAI imports these paths only when the `CREWAI_DESERIALIZE_CALLBACKS=1` environment variable is set. Without it, restoring a checkpoint that names a callback raises a `ValueError`. Set it only for checkpoint files you trust.
+A checkpoint saves a callback as the dotted path of a module-level function, such as `"my_project.hooks.on_task_done"`, and imports it again on restore. A checkpoint is data, so CrewAI imports these paths only when the `CREWAI_DESERIALIZE_CALLBACKS=1` environment variable is set. Without it, restoring a checkpoint that names a callback raises a `ValueError`. A tool's `cache_function` is the exception: its path is imported without this check. Restore only checkpoint files you trust.
 
 These are not saved and do not run after a restore:
 
-- Lambdas, closures, bound methods such as `notifier.on_task_done`, `functools.partial` objects, and callable instances. CrewAI warns `A ... callback cannot be saved in a checkpoint` when you assign one. A tool `cache_function` of this kind falls back to the default, which lets every result be cached.
+- Lambdas, closures, bound methods such as `notifier.on_task_done`, `functools.partial` objects, and callable instances. CrewAI warns `A ... callback cannot be saved in a checkpoint` when you pass one to a `Task`, `Agent`, `Crew`, or tool; setting the attribute afterwards does not warn. A tool `cache_function` of this kind is restored as one that never caches.
 - Callable guardrails. CrewAI warns when it writes the checkpoint. String guardrails are saved.
 - `@before_kickoff` and `@after_kickoff` hooks on a `@CrewBase` class.
 

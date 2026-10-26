@@ -55,11 +55,11 @@ Gravações de checkpoint automáticas (acionadas por evento) são best-effort: 
 
 Uma restauração constrói a crew, o flow ou o agente a partir do arquivo de checkpoint, não do objeto em que você chama `kickoff()`. `crew.kickoff(from_checkpoint=...)` executa a crew armazenada no arquivo, então os callables definidos em `crew` não são copiados.
 
-Um checkpoint salva um callback como o caminho pontuado de uma função de nível de módulo, como `"my_project.hooks.on_task_done"`, e o importa novamente na restauração. Um checkpoint é dado, então o CrewAI só importa esses caminhos quando a variável de ambiente `CREWAI_DESERIALIZE_CALLBACKS=1` está definida. Sem ela, restaurar um checkpoint que nomeia um callback lança um `ValueError`. Defina-a apenas para arquivos de checkpoint em que você confia.
+Um checkpoint salva um callback como o caminho pontuado de uma função de nível de módulo, como `"my_project.hooks.on_task_done"`, e o importa novamente na restauração. Um checkpoint é dado, então o CrewAI só importa esses caminhos quando a variável de ambiente `CREWAI_DESERIALIZE_CALLBACKS=1` está definida. Sem ela, restaurar um checkpoint que nomeia um callback lança um `ValueError`. A exceção é a `cache_function` de uma ferramenta: o caminho dela é importado sem essa verificação. Restaure apenas arquivos de checkpoint em que você confia.
 
 Estes itens não são salvos e não rodam após uma restauração:
 
-- Lambdas, closures, métodos vinculados como `notifier.on_task_done`, objetos `functools.partial` e instâncias chamáveis. O CrewAI emite o aviso `A ... callback cannot be saved in a checkpoint` quando você atribui um deles. Uma `cache_function` de ferramenta desse tipo volta ao padrão, que permite guardar todos os resultados em cache.
+- Lambdas, closures, métodos vinculados como `notifier.on_task_done`, objetos `functools.partial` e instâncias chamáveis. O CrewAI emite o aviso `A ... callback cannot be saved in a checkpoint` quando você passa um deles para uma `Task`, um `Agent`, uma `Crew` ou uma ferramenta; definir o atributo depois não emite aviso. Uma `cache_function` de ferramenta desse tipo é restaurada como uma função que nunca guarda em cache.
 - Guardrails chamáveis. O CrewAI emite um aviso ao gravar o checkpoint. Guardrails em texto são salvos.
 - Hooks `@before_kickoff` e `@after_kickoff` em uma classe `@CrewBase`.
 

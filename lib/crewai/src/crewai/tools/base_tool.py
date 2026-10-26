@@ -71,8 +71,9 @@ def _resolve_tool_dict(value: dict[str, Any]) -> Any:
         val = data.get(key)
         if val is None:
             # Saved as null when the callable had no importable path (a lambda
-            # or bound method); fall back to the field default.
-            data.pop(key, None)
+            # or bound method). It may have guarded a state-changing tool, so
+            # fail closed rather than fall back to a default that caches.
+            data[key] = _never_cache_function
         elif isinstance(val, str):
             try:
                 data[key] = _resolve_dotted_path(val)
@@ -85,6 +86,10 @@ def _resolve_tool_dict(value: dict[str, Any]) -> Any:
 def _default_cache_function(_args: Any = None, _result: Any = None) -> bool:
     """Default cache function that always allows caching."""
     return True
+
+
+def _never_cache_function(_args: Any = None, _result: Any = None) -> bool:
+    return False
 
 
 def _is_async_callable(func: Callable[..., Any]) -> bool:
