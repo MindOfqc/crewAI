@@ -69,7 +69,11 @@ def _resolve_tool_dict(value: dict[str, Any]) -> Any:
     data = dict(value)
     for key in ("cache_function",):
         val = data.get(key)
-        if isinstance(val, str):
+        if val is None:
+            # Saved as null when the callable had no importable path (a lambda
+            # or bound method); fall back to the field default.
+            data.pop(key, None)
+        elif isinstance(val, str):
             try:
                 data[key] = _resolve_dotted_path(val)
             except (ValueError, ImportError):
