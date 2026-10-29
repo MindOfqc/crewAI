@@ -15,6 +15,77 @@ from tests.experimental.evaluation.metrics.test_base_evaluation_metrics import (
 
 
 class TestReasoningEfficiencyEvaluator(BaseEvaluationMetricsTest):
+    @pytest.fixture(
+        params=[
+            ("Review the evidence", "Review the evidence"),
+            (
+                [
+                    {"type": "text", "text": "Review"},
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": "data:image/png;base64,AA=="},
+                    },
+                    {"type": "text", "text": "the evidence"},
+                    {"type": "text", "text": None},
+                ],
+                "Review the evidence",
+            ),
+            (
+                [
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": "data:image/png;base64,AA=="},
+                    }
+                ],
+                "[multimodal content]",
+            ),
+            (None, ""),
+            ([], "[multimodal content]"),
+            ([{"type": "text", "text": 42}], "[multimodal content]"),
+        ]
+    )
+    def message_response(
+        self, request: pytest.FixtureRequest
+    ) -> tuple[list[dict[str, Any]], str]:
+        content, expected = request.param
+        return [{"role": "assistant", "content": content}], expected
+
+    def test_loop_detection_uses_message_text(
+        self, message_response: tuple[list[dict[str, Any]], str]
+    ) -> None:
+        response, expected = message_response
+        evaluator = ReasoningEfficiencyEvaluator(llm=MagicMock(spec=LLM))
+        calls = [{"response": response}] * 3
+
+        detected, loops = evaluator._detect_loops(calls)
+        assert detected is bool(expected)
+        if expected:
+            assert loops[0]["snippet"] == expected + "..."
+
+    def test_reasoning_lengths_count_message_text(
+        self, message_response: tuple[list[dict[str, Any]], str]
+    ) -> None:
+        response, expected = message_response
+        evaluator = ReasoningEfficiencyEvaluator(llm=MagicMock(spec=LLM))
+        # Include a nonempty response so a None-only trace does not trigger the
+        # existing zero-length variance calculation.
+        patterns = evaluator._analyze_reasoning_patterns(
+            [{"response": response}, {"response": "A separate response"}]
+        )
+        assert (
+            patterns["metrics"]["avg_length"]
+            == (len(expected) + len("A separate response")) / 2
+        )
+
+    def test_call_samples_use_message_text(
+        self, message_response: tuple[list[dict[str, Any]], str]
+    ) -> None:
+        response, expected = message_response
+        evaluator = ReasoningEfficiencyEvaluator(llm=MagicMock(spec=LLM))
+        assert evaluator._get_call_samples([{"response": response}]) == (
+            f"Call 1:\n{expected}\n"
+        )
+
     @pytest.fixture
     def mock_output(self):
         output = MagicMock(spec=TaskOutput)
